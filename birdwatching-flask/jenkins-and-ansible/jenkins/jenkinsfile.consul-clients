@@ -11,13 +11,15 @@ pipeline {
         ANSIBLE_INVENTORY = "${WORKSPACE}/birdwatching-flask/jenkins-and-ansible/ansible/consul-playbook/inventory.ini"
     }
 
-    stage('Checkout') {
-        steps {
-            git url: 'https://github.com/The-A-Team-organization/birdwatching_app.git',
-                branch: 'TAT-97-Set-up-new-repo-and-update-Jenkins-pipeline-for-SSM-based-deployment'
-            sh "ls -lart ${WORKSPACE}"
+    stages {
+
+        stage('Checkout') {
+            steps {
+                git url: 'https://github.com/The-A-Team-organization/birdwatching_app.git',
+                    branch: 'TAT-97-Set-up-new-repo-and-update-Jenkins-pipeline-for-SSM-based-deployment'
+                sh "ls -lart ${WORKSPACE}"
+            }
         }
-    }
 
         stage('Set AWS Role') {
             steps {
