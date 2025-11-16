@@ -41,8 +41,7 @@ pipeline {
                 }
             }
         }
-
-        stage('Assume Role Safely') {
+        stage('Assume Role') {
             steps {
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
                                   credentialsId: "${env.AWS_CREDENTIALS_ID}"]]) {
@@ -59,16 +58,19 @@ pipeline {
                             returnStdout: true
                         ).trim()
 
-                        def parsed = readJSON text: credsJson
+                        def parsed = new groovy.json.JsonSlurper().parseText(credsJson)
 
                         env.AWS_ACCESS_KEY_ID     = parsed.Credentials.AccessKeyId
                         env.AWS_SECRET_ACCESS_KEY = parsed.Credentials.SecretAccessKey
                         env.AWS_SESSION_TOKEN     = parsed.Credentials.SessionToken
 
+                        sh "aws sts get-caller-identity"
                     }
                 }
             }
         }
+
+
 
         stage('Run Ansible') {
             steps {
