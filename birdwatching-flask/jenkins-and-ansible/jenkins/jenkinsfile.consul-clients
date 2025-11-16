@@ -43,16 +43,18 @@ pipeline {
         }
         stage('Assume Role') {
             steps {
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
-                                  credentialsId: "${env.AWS_CREDENTIALS_ID}"]]) {
+                withCredentials([string(credentialsId: "${env.AWS_CREDENTIALS_ID}", variable: 'AWS_SECRET_JSON')]) {
 
                     script {
-                        def credsJson = sh(script: """
-                            aws sts assume-role \
-                                --role-arn ${AWS_ROLE_ARN} \
-                                --role-session-name ansible-ssm-session-${ENV} \
-                                --output json
-                        """, returnStdout: true).trim()
+                        def credsJson = sh(
+                            script: """
+                                aws sts assume-role \
+                                    --role-arn ${AWS_ROLE_ARN} \
+                                    --role-session-name ansible-ssm-session-${ENV} \
+                                    --output json
+                            """,
+                            returnStdout: true
+                        ).trim()
 
                         def creds = readJSON(text: credsJson)
 
@@ -65,7 +67,6 @@ pipeline {
                 }
             }
         }
-
 
         stage('Run Ansible') {
             steps {
