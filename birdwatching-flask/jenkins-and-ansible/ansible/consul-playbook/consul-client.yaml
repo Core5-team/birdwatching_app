@@ -6,8 +6,5 @@
 
   tasks:
     - name: Check uptime
-      amazon.aws.aws_ssm:
-        region: "{{ aws_region }}"
-        instance_id: "{{ inventory_hostname }}"
-        cmd: "uptime"
+      command: uptime
 
