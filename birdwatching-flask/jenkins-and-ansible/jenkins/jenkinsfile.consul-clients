@@ -1,18 +1,14 @@
 pipeline {
     agent any
-
     parameters {
         choice(name: 'ENV', choices: ['dev', 'stage', 'prod'], description: 'Select environment')
     }
-
     environment {
         AWS_REGION = "eu-central-1"
         ANSIBLE_PLAYBOOK = "${WORKSPACE}/birdwatching-flask/jenkins-and-ansible/ansible/consul-playbook/consul-client.yaml"
         ANSIBLE_INVENTORY = "${WORKSPACE}/birdwatching-flask/jenkins-and-ansible/ansible/consul-playbook/inventory.ini"
     }
-
     stages {
-
         stage('Checkout') {
             steps {
                 git url: 'https://github.com/The-A-Team-organization/birdwatching_app.git',
@@ -20,10 +16,10 @@ pipeline {
                 sh "ls -lart ${WORKSPACE}"
             }
         }
-
         stage('Set AWS Role') {
             steps {
                 script {
+                    def credsId  // Add 'def' to fix the warning
                     if (params.ENV == 'dev') {
                         credsId = "aws-dev-account-id"
                         env.AWS_CREDENTIALS_ID = "aws-dev-account-key"
@@ -36,64 +32,47 @@ pipeline {
                     } else {
                         error "Unknown environment: ${params.ENV}"
                     }
-
                     withCredentials([string(credentialsId: credsId, variable: 'AWS_ACCOUNT_ID')]) {
                         env.AWS_ROLE_ARN = "arn:aws:iam::${AWS_ACCOUNT_ID}:role/TerraformRole${params.ENV.capitalize()}"
                     }
                 }
             }
         }
-
-        stage('Assume Role') {
+        stage('Assume Role and Run Ansible') {
             steps {
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
                                   credentialsId: "${env.AWS_CREDENTIALS_ID}"]]) {
-
-                    sh """
-                        set +x
-
-                        CREDS=\$(aws sts assume-role \
-                          --role-arn ${env.AWS_ROLE_ARN} \
-                          --role-session-name ansible-ssm-session-${params.ENV})
-
-                        export AWS_ACCESS_KEY_ID=\$(echo \$CREDS | jq -r '.Credentials.AccessKeyId')
-                        export AWS_SECRET_ACCESS_KEY=\$(echo \$CREDS | jq -r '.Credentials.SecretAccessKey')
-                        export AWS_SESSION_TOKEN=\$(echo \$CREDS | jq -r '.Credentials.SessionToken')
-
-                        set -x
-                        aws sts get-caller-identity
-                        aws ssm describe-instance-information --region ${AWS_REGION}
-                        aws ssm describe-instance-information --filters "Key=InstanceIds,Values=i-06e4c706690740117" --region ${AWS_REGION}
-                        aws ssm start-session --target i-06e4c706690740117 --region ${AWS_REGION} || echo "SSM SESSION FAILED"
-
-                    """
-                }
-            }
-        }
-        stage('Run Ansible') {
-            steps {
-                dir('birdwatching-flask/jenkins-and-ansible/ansible/consul-playbook') {
-                    sh """
-                        echo "=== Checking AWS Configuration ==="
-                        env | grep AWS || echo "No AWS variables found"
-                        
-                        echo "=== Checking boto3 installation ==="
-                        python3 -c "import boto3; print(boto3.__version__)" || echo "boto3 not found"
-                        
-                        echo "=== Checking AWS CLI access ==="
-                        aws sts get-caller-identity || echo "AWS CLI failed"
-                        
-                        echo "=== Running Ansible with verbose output ==="
-                        ansible-playbook \
-                          -i ${env.ANSIBLE_INVENTORY} \
-                          ${env.ANSIBLE_PLAYBOOK} \
-                          --extra-vars "aws_region=${env.AWS_REGION}" \
-                          --extra-vars "env=${params.ENV}" \
-                          -vvvv
-                    """
+                    dir('birdwatching-flask/jenkins-and-ansible/ansible/consul-playbook') {
+                        sh """
+                            set +x
+                            echo "=== Assuming Role ==="
+                            CREDS=\$(aws sts assume-role \
+                              --role-arn ${env.AWS_ROLE_ARN} \
+                              --role-session-name ansible-ssm-session-${params.ENV})
+                            
+                            export AWS_ACCESS_KEY_ID=\$(echo \$CREDS | jq -r '.Credentials.AccessKeyId')
+                            export AWS_SECRET_ACCESS_KEY=\$(echo \$CREDS | jq -r '.Credentials.SecretAccessKey')
+                            export AWS_SESSION_TOKEN=\$(echo \$CREDS | jq -r '.Credentials.SessionToken')
+                            export AWS_DEFAULT_REGION=${AWS_REGION}
+                            
+                            set -x
+                            echo "=== Verifying Assumed Role (should show prod account 896015496924) ==="
+                            aws sts get-caller-identity
+                            
+                            echo "=== Checking SSM Access ==="
+                            aws ssm describe-instance-information --region ${AWS_REGION} --max-items 1
+                            
+                            echo "=== Running Ansible ==="
+                            ansible-playbook \
+                              -i ${env.ANSIBLE_INVENTORY} \
+                              ${env.ANSIBLE_PLAYBOOK} \
+                              --extra-vars "aws_region=${env.AWS_REGION}" \
+                              --extra-vars "env=${params.ENV}" \
+                              -vvv
+                        """
+                    }
                 }
             }
         }
     }
 }
-
