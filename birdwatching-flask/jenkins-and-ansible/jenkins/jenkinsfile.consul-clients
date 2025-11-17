@@ -70,18 +70,26 @@ pipeline {
                 }
             }
         }
-
         stage('Run Ansible') {
             steps {
                 dir('birdwatching-flask/jenkins-and-ansible/ansible/consul-playbook') {
                     sh """
-
-                        env | grep AWS || true
+                        echo "=== Checking AWS Configuration ==="
+                        env | grep AWS || echo "No AWS variables found"
+                        
+                        echo "=== Checking boto3 installation ==="
+                        python3 -c "import boto3; print(boto3.__version__)" || echo "boto3 not found"
+                        
+                        echo "=== Checking AWS CLI access ==="
+                        aws sts get-caller-identity || echo "AWS CLI failed"
+                        
+                        echo "=== Running Ansible with verbose output ==="
                         ansible-playbook \
                           -i ${env.ANSIBLE_INVENTORY} \
                           ${env.ANSIBLE_PLAYBOOK} \
                           --extra-vars "aws_region=${env.AWS_REGION}" \
-                          --extra-vars "env=${params.ENV}"
+                          --extra-vars "env=${params.ENV}" \
+                          -vvvv
                     """
                 }
             }
