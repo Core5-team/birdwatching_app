@@ -3,6 +3,10 @@
   become_method: sudo
 
   vars:
+    ansible_connection: aws_ssm
+    ansible_region: "eu-central-1"
+    ansible_aws_ssm_bucket_name: "ansible-ssm-bucket-oleg"
+    
     db_user: "{{ db_user }}"
     db_password: "{{ db_password }}"
     db_name: "{{ db_name }}"
@@ -20,10 +24,6 @@
       package:
         name: lynis
         state: present
-
-    #    - name: Add cron job for lynis
-    #      script: cron-for-lynis.sh
-    # Temporarily disabled: this task causes an unclear error in Jenkins, and since we currently have nowhere to store the cron logs,it is commented to allow the playbook to run successfully.
 
     - name: Setup database playbook
       ansible.builtin.apt:
