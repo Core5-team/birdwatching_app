@@ -75,6 +75,8 @@ pipeline {
             steps {
                 dir('birdwatching-flask/jenkins-and-ansible/ansible/consul-playbook') {
                     sh """
+
+                        env | grep AWS || true
                         ansible-playbook \
                           -i ${env.ANSIBLE_INVENTORY} \
                           ${env.ANSIBLE_PLAYBOOK} \
