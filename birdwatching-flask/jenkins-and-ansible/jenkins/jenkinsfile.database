@@ -8,7 +8,7 @@ pipeline {
     environment {
         AWS_REGION = "eu-central-1"
         ANSIBLE_PLAYBOOK = "${WORKSPACE}/birdwatching-flask/jenkins-and-ansible/ansible/db-playbook/db-configure-playbook.yaml"
-        ANSIBLE_INVENTORY = "${WORKSPACE}/birdwatching-flask/jenkins-and-ansible/ansible/db-playbook/inventory.ini"
+        ANSIBLE_INVENTORY = "/var/lib/jenkins/inventories/${params.ENV}.ini"
     }
 
     stages {
