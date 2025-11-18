@@ -15,15 +15,15 @@
 
   become: true
   tasks:
-    - name: Install aha
-      package:
-        name: aha
-        state: present
+    #- name: Install aha
+    #  package:
+    #    name: aha
+    #    state: present
 
-    - name: Install lynis
-      package:
-        name: lynis
-        state: present
+    #- name: Install lynis
+    #  package:
+    #    name: lynis
+    #    state: present
 
     - name: Setup database playbook
       ansible.builtin.apt:
