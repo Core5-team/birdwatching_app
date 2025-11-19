@@ -6,24 +6,24 @@
     group: "{{ app_user }}"
     mode: "0755"
 
-- name: Create virtualenv as root
+- name: Create virtualenv
+  become: yes
+  become_user: "{{ app_user }}"
   command: python3 -m venv {{ app_dir }}/venv
   args:
-    creates: "{{ app_dir }}/venv/bin/activate"
+    creates: "{{ app_dir }}/venv/bin/python"
 
-- name: Fix venv permissions
-  file:
-    path: "{{ app_dir }}/venv"
-    owner: "{{ app_user }}"
-    group: "{{ app_user }}"
-    recurse: true
+- name: Ensure pip exists in venv
+  become: yes
+  become_user: "{{ app_user }}"
+  command: "{{ app_dir }}/venv/bin/python -m ensurepip --default-pip"
 
-- name: Ensure pip in venv
-  command: "{{ app_dir }}/venv/bin/python -m ensurepip --upgrade"
-  args:
-    creates: "{{ app_dir }}/venv/bin/pip"
+- name: Upgrade pip
+  become: yes
+  become_user: "{{ app_user }}"
+  command: "{{ app_dir }}/venv/bin/pip install --upgrade pip"
 
-- name: Upload Flask app directory
+- name: Upload Flask app
   copy:
     src: web_server_with_login/
     dest: "{{ app_dir }}/"
@@ -40,6 +40,8 @@
     mode: "0644"
 
 - name: Install Python dependencies in venv
+  become: yes
+  become_user: "{{ app_user }}"
   pip:
     requirements: "{{ app_dir }}/requirements.txt"
     executable: "{{ app_dir }}/venv/bin/pip"
