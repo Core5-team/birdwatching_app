@@ -3,6 +3,7 @@
   command: chsh -s /bin/bash myappuser
 
 - name: Ensure app directory exists
+  become: yes
   file:
     path: "{{ app_dir }}"
     state: directory
@@ -10,31 +11,30 @@
     group: "{{ app_user }}"
     mode: "0755"
 
-- name: Create virtualenv (run as myappuser)
+- name: Create virtualenv (run as root)
   become: yes
-  become_user: "{{ app_user }}"
   command: python3 -m venv {{ app_dir }}/venv
   args:
     creates: "{{ app_dir }}/venv/bin/python"
 
-- name: Ensure pip exists in venv
-  become: yes
-  become_user: "{{ app_user }}"
-  command: "{{ app_dir }}/venv/bin/python -m ensurepip --default-pip"
-
-- name: Upgrade pip
-  become: yes
-  become_user: "{{ app_user }}"
-  command: "{{ app_dir }}/venv/bin/pip install --upgrade pip"
-
 - name: Fix venv ownership
+  become: yes
   file:
     path: "{{ app_dir }}/venv"
     owner: "{{ app_user }}"
     group: "{{ app_user }}"
     recurse: yes
 
+- name: Ensure pip exists in venv
+  become: yes
+  command: "{{ app_dir }}/venv/bin/python -m ensurepip --default-pip"
+
+- name: Upgrade pip
+  become: yes
+  command: "{{ app_dir }}/venv/bin/pip install --upgrade pip"
+
 - name: Upload Flask app
+  become: yes
   copy:
     src: web_server_with_login/
     dest: "{{ app_dir }}/"
@@ -43,6 +43,7 @@
     mode: "0755"
 
 - name: Upload requirements.txt
+  become: yes
   copy:
     src: requirements.txt
     dest: "{{ app_dir }}/requirements.txt"
@@ -52,8 +53,5 @@
 
 - name: Install Python dependencies in venv
   become: yes
-  become_user: "{{ app_user }}"
-  pip:
-    requirements: "{{ app_dir }}/requirements.txt"
-    executable: "{{ app_dir }}/venv/bin/pip"
+  command: "{{ app_dir }}/venv/bin/pip install -r {{ app_dir }}/requirements.txt"
 
