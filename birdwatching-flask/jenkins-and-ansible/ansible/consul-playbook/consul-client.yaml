@@ -101,6 +101,29 @@
         src: lb.json.j2
         dest: /etc/consul.d/client/lb.json
 
+- name: Register monitoring stack in Consul
+  hosts: monitoring
+  become: yes
+  vars:
+    ansible_connection: aws_ssm
+    ansible_region: "eu-central-1"
+    ansible_aws_ssm_bucket_name: "ansible-ssm-bucket-oleg"
+  tasks:
+    - name: Register Prometheus
+      template:
+        src: prometheus.json.j2
+        dest: /etc/consul.d/client/prometheus.json
+
+    - name: Register Grafana
+      template:
+        src: grafana.json.j2
+        dest: /etc/consul.d/client/grafana.json
+
+    - name: Register Loki
+      template:
+        src: loki.json.j2
+        dest: /etc/consul.d/client/loki.json
+
 - name: Continue configure Consul clients
   hosts: consul_clients
   become: yes
