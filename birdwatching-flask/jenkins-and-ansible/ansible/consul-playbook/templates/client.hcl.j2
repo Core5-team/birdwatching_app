@@ -2,8 +2,8 @@ server = false
 datacenter = "dc1"
 node_name = "{{ node_name }}"
 data_dir = "/var/lib/consul"
-bind_addr = "{{ ansible_host }}"
-advertise_addr = "{{ ansible_host }}"
+bind_addr = "{{ ansible_default_ipv4.address }}"
+advertise_addr = "{{ ansible_default_ipv4.address }}"
 client_addr = "0.0.0.0"
 ui_config {
   enabled = true
