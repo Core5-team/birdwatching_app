@@ -12,8 +12,8 @@ pipeline {
     }
 
     stages {
-        
-         stage('Load ENV Credentials') {
+
+        stage('Load ENV Credentials') {
             steps {
                 script {
                     echo "Loading environment-specific credentials for ${params.ENV}"
@@ -32,22 +32,23 @@ pipeline {
                         string(credentialsId: "APP_DIR_${params.ENV}", variable: 'APP_DIR_VAL'),
                         string(credentialsId: "APP_NAME_${params.ENV}", variable: 'APP_NAME_VAL')
                     ]) {
-                        env.DB_USER = DB_USER_VAL
-                        env.DB_PASS = DB_PASS_VAL
-                        env.DB_NAME = DB_NAME_VAL
-                        env.DB_HOST = DB_HOST_VAL
-                        env.DB_PORT = DB_PORT_VAL
-                        env.APP_PORT = APP_PORT_VAL
-                        env.SECRET_KEY = SECRET_KEY_VAL
-                        env.S3_BUCKET = S3_BUCKET_VAL
-                        env.S3_REGION = S3_REGION_VAL
-                        env.APP_USER = APP_USER_VAL
-                        env.APP_DIR = APP_DIR_VAL
-                        env.APP_NAME = APP_NAME_VAL
+                        env.DB_USER     = DB_USER_VAL
+                        env.DB_PASS     = DB_PASS_VAL
+                        env.DB_NAME     = DB_NAME_VAL
+                        env.DB_HOST     = DB_HOST_VAL
+                        env.DB_PORT     = DB_PORT_VAL
+                        env.APP_PORT    = APP_PORT_VAL
+                        env.SECRET_KEY  = SECRET_KEY_VAL
+                        env.S3_BUCKET   = S3_BUCKET_VAL
+                        env.S3_REGION   = S3_REGION_VAL
+                        env.APP_USER    = APP_USER_VAL
+                        env.APP_DIR     = APP_DIR_VAL
+                        env.APP_NAME    = APP_NAME_VAL
                     }
                 }
             }
         }
+
 
         stage('Checkout') {
             steps {
@@ -84,6 +85,7 @@ pipeline {
 
         stage('Assume Role and Run Ansible') {
             steps {
+
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
                                   credentialsId: "${env.AWS_CREDENTIALS_ID}"]]) {
 
@@ -100,6 +102,11 @@ pipeline {
                             export AWS_SECRET_ACCESS_KEY=\$(echo \$CREDS | jq -r '.Credentials.SecretAccessKey')
                             export AWS_SESSION_TOKEN=\$(echo \$CREDS | jq -r '.Credentials.SessionToken')
                             export AWS_DEFAULT_REGION=${AWS_REGION}
+
+                            echo "Running Ansible with variables:"
+                            echo "DB_USER=\$DB_USER"
+                            echo "APP_DIR=\$APP_DIR"
+                            echo "APP_NAME=\$APP_NAME"
 
                             ansible-playbook \
                                 -i ${env.ANSIBLE_INVENTORY} \
