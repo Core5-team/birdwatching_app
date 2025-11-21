@@ -1,0 +1,136 @@
+pipeline {
+    agent any
+
+    parameters {
+        choice(name: 'ENV', choices: ['dev', 'stage', 'prod'], description: 'Select environment')
+    }
+
+    environment {
+        AWS_REGION = "eu-central-1"
+        ANSIBLE_PLAYBOOK = "${WORKSPACE}/birdwatching-flask/jenkins-and-ansible/ansible/web-server-playbook/playbook-nginx-rp-with-flask-configure.yaml"
+        ANSIBLE_INVENTORY = "/var/lib/jenkins/inventories/${params.ENV}.ini"
+    }
+
+    stages {
+
+        stage('Load ENV Credentials') {
+            steps {
+                script {
+                    echo "Loading environment-specific credentials for ${params.ENV}"
+
+                    withCredentials([
+                        string(credentialsId: "DB_USER_${params.ENV}", variable: 'DB_USER_VAL'),
+                        string(credentialsId: "DB_PASS_${params.ENV}", variable: 'DB_PASS_VAL'),
+                        string(credentialsId: "DB_NAME_${params.ENV}", variable: 'DB_NAME_VAL'),
+                        string(credentialsId: "DB_HOST_${params.ENV}", variable: 'DB_HOST_VAL'),
+                        string(credentialsId: "DB_PORT_${params.ENV}", variable: 'DB_PORT_VAL'),
+                        string(credentialsId: "APP_PORT_${params.ENV}", variable: 'APP_PORT_VAL'),
+                        string(credentialsId: "SECRET_KEY_${params.ENV}", variable: 'SECRET_KEY_VAL'),
+                        string(credentialsId: "S3_BUCKET_${params.ENV}", variable: 'S3_BUCKET_VAL'),
+                        string(credentialsId: "S3_REGION_${params.ENV}", variable: 'S3_REGION_VAL'),
+                        string(credentialsId: "APP_USER_${params.ENV}", variable: 'APP_USER_VAL'),
+                        string(credentialsId: "APP_DIR_${params.ENV}", variable: 'APP_DIR_VAL'),
+                        string(credentialsId: "APP_NAME_${params.ENV}", variable: 'APP_NAME_VAL')
+                    ]) {
+                        env.DB_USER     = DB_USER_VAL
+                        env.DB_PASS     = DB_PASS_VAL
+                        env.DB_NAME     = DB_NAME_VAL
+                        env.DB_HOST     = DB_HOST_VAL
+                        env.DB_PORT     = DB_PORT_VAL
+                        env.APP_PORT    = APP_PORT_VAL
+                        env.SECRET_KEY  = SECRET_KEY_VAL
+                        env.S3_BUCKET   = S3_BUCKET_VAL
+                        env.S3_REGION   = S3_REGION_VAL
+                        env.APP_USER    = APP_USER_VAL
+                        env.APP_DIR     = APP_DIR_VAL
+                        env.APP_NAME    = APP_NAME_VAL
+                    }
+                }
+            }
+        }
+
+
+        stage('Checkout') {
+            steps {
+                git url: 'https://github.com/The-A-Team-organization/birdwatching_app.git',
+                    branch: 'TAT-97-Set-up-new-repo-and-update-Jenkins-pipeline-for-SSM-based-deployment'
+                sh "ls -lart ${WORKSPACE}"
+            }
+        }
+
+        stage('Set AWS Role') {
+            steps {
+                script {
+                    def credsId
+
+                    if (params.ENV == 'dev') {
+                        credsId = "aws-dev-account-id"
+                        env.AWS_CREDENTIALS_ID = "aws-dev-account-key"
+                    } else if (params.ENV == 'stage') {
+                        credsId = "aws-stage-account-id"
+                        env.AWS_CREDENTIALS_ID = "aws-stage-account-key"
+                    } else if (params.ENV == 'prod') {
+                        credsId = "aws-prod-account-id"
+                        env.AWS_CREDENTIALS_ID = "aws-prod-account-key"
+                    } else {
+                        error "Unknown environment: ${params.ENV}"
+                    }
+
+                    withCredentials([string(credentialsId: credsId, variable: 'AWS_ACCOUNT_ID')]) {
+                        env.AWS_ROLE_ARN = "arn:aws:iam::${AWS_ACCOUNT_ID}:role/TerraformRole${params.ENV.capitalize()}"
+                    }
+                }
+            }
+        }
+
+        stage('Assume Role and Run Ansible') {
+            steps {
+
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
+                                  credentialsId: "${env.AWS_CREDENTIALS_ID}"]]) {
+
+                    dir('birdwatching-flask/jenkins-and-ansible/ansible/web-server-playbook') {
+
+                        sh """
+                            set +x
+
+                            CREDS=\$(aws sts assume-role \
+                                --role-arn ${env.AWS_ROLE_ARN} \
+                                --role-session-name ansible-ssm-session-${params.ENV})
+
+                            export AWS_ACCESS_KEY_ID=\$(echo \$CREDS | jq -r '.Credentials.AccessKeyId')
+                            export AWS_SECRET_ACCESS_KEY=\$(echo \$CREDS | jq -r '.Credentials.SecretAccessKey')
+                            export AWS_SESSION_TOKEN=\$(echo \$CREDS | jq -r '.Credentials.SessionToken')
+                            export AWS_DEFAULT_REGION=${AWS_REGION}
+
+                            echo "Running Ansible with variables:"
+                            echo "DB_USER=\$DB_USER"
+                            echo "APP_DIR=\$APP_DIR"
+                            echo "APP_NAME=\$APP_NAME"
+
+                            ansible-playbook \
+                                -i ${env.ANSIBLE_INVENTORY} \
+                                ${env.ANSIBLE_PLAYBOOK} \
+                                --extra-vars "env=${params.ENV}" \
+                                --extra-vars "aws_region=${env.AWS_REGION}" \
+                                --extra-vars "db_user=${env.DB_USER}" \
+                                --extra-vars "db_password=${env.DB_PASS}" \
+                                --extra-vars "db_name=${env.DB_NAME}" \
+                                --extra-vars "db_host=${env.DB_HOST}" \
+                                --extra-vars "db_port=${env.DB_PORT}" \
+                                --extra-vars "app_port=${env.APP_PORT}" \
+                                --extra-vars "secret_key=${env.SECRET_KEY}" \
+                                --extra-vars "s3_bucket=${env.S3_BUCKET}" \
+                                --extra-vars "s3_region=${env.S3_REGION}" \
+                                --extra-vars "app_user=${env.APP_USER}" \
+                                --extra-vars "app_dir=${env.APP_DIR}" \
+                                --extra-vars "app_name=${env.APP_NAME}" \
+                                -vvv
+                        """
+                    }
+                }
+            }
+        }
+    }
+}
+

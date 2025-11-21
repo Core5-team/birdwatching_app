@@ -1,0 +1,31 @@
+- name: Deploy Flask + NGINX
+  hosts: web
+  become: yes
+  vars:
+    ansible_connection: aws_ssm
+    ansible_region: "eu-central-1"
+    ansible_aws_ssm_bucket_name: "ansible-ssm-bucket-oleg"
+  roles:
+    - common
+    - app
+    - nginx
+- name: Install lynis on the WebServers
+  hosts: web
+  become: yes
+  become_method: sudo
+  vars:
+    ansible_connection: aws_ssm
+    ansible_region: "eu-central-1"
+    ansible_aws_ssm_bucket_name: "ansible-ssm-bucket-oleg"
+    package_to_add: aha
+    package_to_add2: lynis
+  tasks:
+    - name: Install aha
+      package:
+        name: aha
+        state: present
+
+    - name: Install lynis
+      package:
+        name: lynis
+        state: present

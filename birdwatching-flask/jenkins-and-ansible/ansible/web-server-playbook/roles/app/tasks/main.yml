@@ -1,0 +1,83 @@
+- name: Ensure myappuser has bash shell
+  become: yes
+  command: chsh -s /bin/bash myappuser
+
+- name: Ensure app directory exists
+  become: yes
+  file:
+    path: "{{ app_dir }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0755"
+
+- name: Create virtualenv (run as root)
+  become: yes
+  command: python3 -m venv {{ app_dir }}/venv
+  args:
+    creates: "{{ app_dir }}/venv/bin/python"
+
+- name: Fix venv ownership
+  become: yes
+  file:
+    path: "{{ app_dir }}/venv"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    recurse: yes
+
+- name: Ensure pip exists in venv
+  become: yes
+  command: "{{ app_dir }}/venv/bin/python -m ensurepip --default-pip"
+
+- name: Upgrade pip
+  become: yes
+  command: "{{ app_dir }}/venv/bin/pip install --upgrade pip"
+
+- name: Upload Flask app
+  become: yes
+  copy:
+    src: web_server_with_login/
+    dest: "{{ app_dir }}/"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0755"
+
+- name: Upload requirements.txt
+  become: yes
+  copy:
+    src: requirements.txt
+    dest: "{{ app_dir }}/requirements.txt"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0644"
+
+- name: Install Python dependencies in venv
+  become: yes
+  command: "{{ app_dir }}/venv/bin/pip install -r {{ app_dir }}/requirements.txt"
+
+- name: Deploy environment file
+  become: yes
+  template:
+    src: .env.j2
+    dest: /etc/{{ app_name }}.env
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Deploy gunicorn systemd service
+  become: yes
+  template:
+    src: flaskapp.service.j2
+    dest: /etc/systemd/system/{{ app_name }}.service
+    mode: "0644"
+
+- name: Reload systemd
+  become: yes
+  command: systemctl daemon-reload
+
+- name: Start and enable gunicorn service
+  become: yes
+  service:
+    name: "{{ app_name }}"
+    state: started
+    enabled: yes

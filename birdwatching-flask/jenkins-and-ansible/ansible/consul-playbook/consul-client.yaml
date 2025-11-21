@@ -1,0 +1,170 @@
+---
+- name: Configure Consul clients
+  hosts: consul_clients
+  become: yes
+  vars:
+    ansible_connection: aws_ssm
+    ansible_region: "eu-central-1"
+    ansible_aws_ssm_bucket_name: "ansible-ssm-bucket-oleg"
+  tasks:
+    - name: Install unzip
+      package:
+        name: unzip
+        state: present
+
+    - name: Download Consul
+      get_url:
+        url: "https://releases.hashicorp.com/consul/1.16.2/consul_1.16.2_linux_amd64.zip"
+        dest: "/tmp/consul.zip"
+
+    - name: Unzip Consul
+      unarchive:
+        src: "/tmp/consul.zip"
+        dest: "/usr/local/bin/"
+        remote_src: yes
+        mode: "0755"
+
+    - name: Ensure /usr/local/bin/consul is executable
+      file:
+        path: "/usr/local/bin/consul"
+        mode: "0755"
+        state: file
+
+    - name: Create directories for Consul
+      file:
+        path: "{{ item }}"
+        state: directory
+      loop:
+        - /etc/consul.d
+        - /etc/consul.d/client
+
+    - name: Copy client config
+      template:
+        src: client.hcl.j2
+        dest: /etc/consul.d/client/client.hcl
+
+    - name: Write Consul systemd service
+      copy:
+        dest: /etc/systemd/system/consul-client.service
+        content: |
+          [Unit]
+          Description=Consul Service Discovery Agent
+          After=network-online.target
+
+          [Service]
+          Type=simple
+          ExecStart=/usr/local/bin/consul agent -config-dir=/etc/consul.d/client
+          Restart=on-failure
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Reload systemd
+      command: systemctl daemon-reload
+
+- name: Register web service
+  hosts: web
+  become: yes
+  vars:
+    ansible_connection: aws_ssm
+    ansible_region: "eu-central-1"
+    ansible_aws_ssm_bucket_name: "ansible-ssm-bucket-oleg"
+  tasks:
+    - name: Register web service in Consul
+      template:
+        src: web.json.j2
+        dest: /etc/consul.d/client/web.json
+
+- name: Register db service
+  hosts: db
+  become: yes
+  vars:
+    ansible_connection: aws_ssm
+    ansible_region: "eu-central-1"
+    ansible_aws_ssm_bucket_name: "ansible-ssm-bucket-oleg"
+  tasks:
+    - name: Register db service in Consul
+      template:
+        src: db.json.j2
+        dest: /etc/consul.d/client/db.json
+
+- name: Register lb service
+  hosts: lb
+  become: yes
+  vars:
+    ansible_connection: aws_ssm
+    ansible_region: "eu-central-1"
+    ansible_aws_ssm_bucket_name: "ansible-ssm-bucket-oleg"
+  tasks:
+    - name: Register lb service in Consul
+      template:
+        src: lb.json.j2
+        dest: /etc/consul.d/client/lb.json
+
+- name: Register monitoring stack in Consul
+  hosts: monitoring
+  become: yes
+  vars:
+    ansible_connection: aws_ssm
+    ansible_region: "eu-central-1"
+    ansible_aws_ssm_bucket_name: "ansible-ssm-bucket-oleg"
+  tasks:
+    - name: Register Prometheus
+      template:
+        src: prometheus.json.j2
+        dest: /etc/consul.d/client/prometheus.json
+
+    - name: Register Grafana
+      template:
+        src: grafana.json.j2
+        dest: /etc/consul.d/client/grafana.json
+
+    - name: Register Loki
+      template:
+        src: loki.json.j2
+        dest: /etc/consul.d/client/loki.json
+
+- name: Continue configure Consul clients
+  hosts: consul_clients
+  become: yes
+  vars:
+    ansible_connection: aws_ssm
+    ansible_region: "eu-central-1"
+    ansible_aws_ssm_bucket_name: "ansible-ssm-bucket-oleg"
+  tasks:
+    - name: Ensure Consul client systemd service is running
+      systemd:
+        name: consul-client
+        state: restarted
+        enabled: yes
+
+    - name: Reload Consul client
+      command: /usr/local/bin/consul reload
+
+- name: Configure systemd-resolved for Consul DNS
+  hosts: consul_clients
+  become: yes
+  vars:
+    ansible_connection: aws_ssm
+    ansible_region: "eu-central-1"
+    ansible_aws_ssm_bucket_name: "ansible-ssm-bucket-oleg"
+  tasks:
+    - name: Create systemd resolved config directory
+      file:
+        path: /etc/systemd/resolved.conf.d
+        state: directory
+
+    - name: Configure Consul DNS in systemd-resolved
+      copy:
+        dest: /etc/systemd/resolved.conf.d/consul.conf
+        content: |
+          [Resolve]
+          DNS=127.0.0.1:8600
+          DNSSEC=false
+          Domains=~consul
+
+    - name: Restart systemd-resolved
+      systemd:
+        name: systemd-resolved
+        state: restarted
+        enabled: yes
