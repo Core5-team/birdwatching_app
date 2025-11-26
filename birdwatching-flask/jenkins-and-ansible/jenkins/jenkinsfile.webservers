@@ -53,7 +53,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 git url: 'https://github.com/The-A-Team-organization/birdwatching_app.git',
-                    branch: 'TAT-105-Connect-Birdwatching-Infrastructure-to-Central-Monitoring-Service'
+                    branch: 'main'
                 sh "ls -lart ${WORKSPACE}"
             }
         }
