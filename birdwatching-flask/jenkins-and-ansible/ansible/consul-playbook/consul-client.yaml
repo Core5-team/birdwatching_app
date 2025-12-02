@@ -2,10 +2,6 @@
 - name: Configure Consul clients
   hosts: consul_clients
   become: yes
-  vars:
-    ansible_connection: aws_ssm
-    ansible_region: "eu-central-1"
-    ansible_aws_ssm_bucket_name: "ansible-ssm-bucket-oleg"
   tasks:
     - name: Install unzip
       package:
@@ -65,10 +61,6 @@
 - name: Register web service
   hosts: web
   become: yes
-  vars:
-    ansible_connection: aws_ssm
-    ansible_region: "eu-central-1"
-    ansible_aws_ssm_bucket_name: "ansible-ssm-bucket-oleg"
   tasks:
     - name: Register web service in Consul
       template:
@@ -78,10 +70,6 @@
 - name: Register db service
   hosts: db
   become: yes
-  vars:
-    ansible_connection: aws_ssm
-    ansible_region: "eu-central-1"
-    ansible_aws_ssm_bucket_name: "ansible-ssm-bucket-oleg"
   tasks:
     - name: Register db service in Consul
       template:
@@ -91,10 +79,6 @@
 - name: Register lb service
   hosts: lb
   become: yes
-  vars:
-    ansible_connection: aws_ssm
-    ansible_region: "eu-central-1"
-    ansible_aws_ssm_bucket_name: "ansible-ssm-bucket-oleg"
   tasks:
     - name: Register lb service in Consul
       template:
@@ -104,10 +88,6 @@
 - name: Register monitoring stack in Consul
   hosts: monitoring
   become: yes
-  vars:
-    ansible_connection: aws_ssm
-    ansible_region: "eu-central-1"
-    ansible_aws_ssm_bucket_name: "ansible-ssm-bucket-oleg"
   tasks:
     - name: Register Prometheus
       template:
@@ -127,10 +107,6 @@
 - name: Continue configure Consul clients
   hosts: consul_clients
   become: yes
-  vars:
-    ansible_connection: aws_ssm
-    ansible_region: "eu-central-1"
-    ansible_aws_ssm_bucket_name: "ansible-ssm-bucket-oleg"
   tasks:
     - name: Ensure Consul client systemd service is running
       systemd:
@@ -144,10 +120,6 @@
 - name: Configure systemd-resolved for Consul DNS
   hosts: consul_clients
   become: yes
-  vars:
-    ansible_connection: aws_ssm
-    ansible_region: "eu-central-1"
-    ansible_aws_ssm_bucket_name: "ansible-ssm-bucket-oleg"
   tasks:
     - name: Create systemd resolved config directory
       file:
