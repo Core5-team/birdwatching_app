@@ -7,6 +7,7 @@ from login.login_register import login_register
 from images.photo_uploader import photo_uploader
 from dashboard.dashboard import dashboard
 from models.models import db
+from chat.chat import chat
 
 secret_key=os.environ.get("SECRET_KEY")
 dbname=os.environ.get("DB_NAME")
@@ -34,6 +35,7 @@ with app.app_context():
 app.register_blueprint(login_register, url_prefix="")
 app.register_blueprint(photo_uploader, url_prefix="/upload")
 app.register_blueprint(dashboard, url_prefix="/")
+app.register_blueprint(chat, url_prefix="")
 
 if __name__ == '__main__':
     app.run(debug=True)

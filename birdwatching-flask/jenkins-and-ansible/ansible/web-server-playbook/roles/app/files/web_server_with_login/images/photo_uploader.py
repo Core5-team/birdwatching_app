@@ -110,6 +110,34 @@ def index():
         )
     return render_template("index.html", pictures=pictures_with_urls)
 
+@photo_uploader.route("/api/gallery", methods=["GET"])
+def gallery_api():
+    pictures = BirdPictures.query.with_entities(
+        BirdPictures.id,
+        BirdPictures.picture,
+        BirdPictures.location,
+        BirdPictures.is_protected
+    ).all()
+
+    result = []
+
+    for pic in pictures:
+        if pic.is_protected:
+            s3_url = None
+            location_display = "Protected"
+        else:
+            s3_url = generate_s3_url(s3_bucket, pic.picture)
+            location_display = pic.location
+
+        result.append({
+            "id": pic.id,
+            "picture": pic.picture,
+            "location": location_display,
+            "is_protected": pic.is_protected,
+            "s3_url": s3_url,
+        })
+
+    return {"pictures": result}
 
 @photo_uploader.route("/upload/", methods=("GET", "POST"))
 @login_required
