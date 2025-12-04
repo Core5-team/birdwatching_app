@@ -4,18 +4,11 @@ pipeline {
         choice(name: 'ENV', choices: ['dev', 'stage', 'prod'], description: 'Select environment')
     }
     environment {
-        AWS_REGION = "eu-central-1"
+        AWS_REGION = "us-east-1"
         ANSIBLE_PLAYBOOK = "${WORKSPACE}/birdwatching-flask/jenkins-and-ansible/ansible/consul-playbook/consul-client.yaml"
         ANSIBLE_INVENTORY = "/var/lib/jenkins/inventories/${params.ENV}.ini"
     }
     stages {
-        stage('Checkout') {
-            steps {
-                git url: 'https://github.com/The-A-Team-organization/birdwatching_app.git',
-                    branch: 'main'
-                sh "ls -lart ${WORKSPACE}"
-            }
-        }
         stage('Set AWS Role') {
             steps {
                 script {
@@ -53,7 +46,7 @@ pipeline {
                             export AWS_SECRET_ACCESS_KEY=\$(echo \$CREDS | jq -r '.Credentials.SecretAccessKey')
                             export AWS_SESSION_TOKEN=\$(echo \$CREDS | jq -r '.Credentials.SessionToken')
                             export AWS_DEFAULT_REGION=${AWS_REGION}
-                            
+
                             ansible-playbook \
                               -i ${env.ANSIBLE_INVENTORY} \
                               ${env.ANSIBLE_PLAYBOOK} \

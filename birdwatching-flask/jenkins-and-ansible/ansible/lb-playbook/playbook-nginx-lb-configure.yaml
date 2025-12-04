@@ -23,10 +23,6 @@
 - hosts: lb
   name: Install Consul template precompiled binary
   become: yes
-  vars:
-    ansible_connection: aws_ssm
-    ansible_region: "eu-central-1"
-    ansible_aws_ssm_bucket_name: "ansible-ssm-bucket-oleg"
   tasks:
     - name: Install required packages
       ansible.builtin.apt:
@@ -62,9 +58,6 @@
 - hosts: lb
   become: yes
   vars:
-    ansible_connection: aws_ssm
-    ansible_region: "eu-central-1"
-    ansible_aws_ssm_bucket_name: "ansible-ssm-bucket-oleg"
     port: "{{nginxlb_port}}"
   tasks:
     - name: Install nginx
