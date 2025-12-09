@@ -5,7 +5,7 @@ from botocore.exceptions import ClientError
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from sqlalchemy import true
 from werkzeug.utils import secure_filename
-from models.models import db, BirdPictures
+from models.models import db, BirdPictures, User
 from login.login_register import current_user
 from utils.decorators import login_required
 
@@ -181,6 +181,46 @@ def upload():
 
     return render_template("upload.html")
 
+@photo_uploader.route("/api/upload", methods=["POST"])
+def daily_bird_upload():
+    if "file" not in request.files or "location" not in request.form:
+        return {"error": "Missing fields"}, 400
+    file = request.files["file"]
+    location = request.form["location"]
+    password = request.form.get("password")
+    protect = bool(password)
+
+    username = "illuminati"
+    illuminati = User.query.filter_by(username=username).first()
+
+    if not illuminati:
+        illuminati = User(username=username)
+        illuminati.set_password(password) 
+        illuminati.set_role("user")
+        db.session.add(illuminati)
+        db.session.commit()
+
+    illuminati_id = illuminati.id
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        unique_filename = make_unique(filename)
+        if upload_file_to_s3(file, s3_bucket, unique_filename):
+            new_picture = BirdPictures(
+                location=location,
+                picture=unique_filename,
+                user_id=illuminati_id,               
+                is_protected=protect
+            )
+            if protect:
+                new_picture.set_password(password)
+            db.session.add(new_picture)
+            db.session.commit()
+
+            return {"status": "ok", "picture": unique_filename}, 200
+        else:
+            return {"error": "S3 upload failed"}, 500
+
+    return {"error": "Invalid file"}, 400
 
 @photo_uploader.route("/delete_photo/<image_id>", methods=["POST"])
 @login_required
