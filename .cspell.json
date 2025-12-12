@@ -58,6 +58,22 @@
     "venv",
     "virtualenv",
     "webservers",
-    "werkzeug"
+    "werkzeug",
+    "Whisperwing",
+    "Stormcry",
+    "Snowthroat",
+    "Nightowl",
+    "Frostowl",
+    "Skyhawk",
+    "Ironhawk",
+    "Thunderbittern",
+    "Shadowlark",
+    "Sunlark",
+    "Yakutian",
+    "EBIRD",
+    "alreade",
+    "hashpw",
+    "gensalt",
+    "manylinux"
   ]
 }

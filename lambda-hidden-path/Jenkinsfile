@@ -1,0 +1,42 @@
+pipeline {
+    agent any
+    options {
+        skipStagesAfterUnstable()
+    }
+
+    stages {
+        stage('Install Lambda Dependencies') {
+            steps {
+                dir('lambda-hidden-path/lambda-handler') {
+                sh '''
+                    pip3 install --platform manylinux2014_x86_64 --python-version 3.12 --only-binary=:all: --target ./package bcrypt
+                    pip3 install --target ./package -r requirements.txt
+                '''
+            }
+            }
+        }
+
+        stage('Build ZIP Package') {
+            steps {
+                dir('lambda-hidden-path/lambda-handler') {
+                sh '''
+                    cd package
+                    zip -r ../${ZIP_NAME} .
+                    cd ..
+                    zip ${ZIP_NAME} lambda_function.py constants.py
+                '''
+            }
+            }
+        }
+
+        stage('Upload to S3') {
+            steps {
+                dir('lambda-hidden-path/lambda-handler') {
+                sh '''
+                    aws s3 cp ${ZIP_NAME} s3://${S3_BUCKET}/${ZIP_NAME}
+                '''
+            }
+            }
+        }
+    }
+}
