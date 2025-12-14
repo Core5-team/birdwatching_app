@@ -33,7 +33,7 @@ pipeline {
             steps {
                 dir('lambda-hidden-path/lambda-handler') {
                 sh '''
-                    aws s3 cp ${ZIP_NAME} s3://${S3_BUCKET}/${ZIP_NAME}
+                    aws s3 cp ${ZIP_NAME} s3://${S3_BUCKET}/${ZIP_NAME} --acl bucket-owner-full-control
                 '''
             }
             }
