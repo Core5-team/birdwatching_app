@@ -9,12 +9,14 @@ Jenkins pipelines defined in this repository must be created and run in Jenkins.
 ## Jenkins Pipelines
 
 Jenkinsfiles in this repository are the entry point for deployment:
+
 - Each Jenkinsfile represents a pipeline to configure part of the system
 - Pipelines are created in Jenkins and executed there
 - Running the pipelines launches and configures the environment
 - This is the supported deployment model.
 
 ## Repository Content
+
 - Flask application code
 - Ansible playbooks and roles
 - Jenkins pipelines
