@@ -7,6 +7,7 @@
     "DNSSEC",
     "Flaskconfigure",
     "Gunicorn",
+    "Jenkinsfiles",
     "MAINPID",
     "Maars",
     "Postgre",
